@@ -76,6 +76,6 @@ export async function main(ns) {
 	ns.print(nextNodeNumber);
 	ns.tprint(nextNodeNumber);
 
-	ns.singularity.destroyW0r1dD43m0n(nextNodeNumber, "bitnode_start.js");
+	//ns.singularity.destroyW0r1dD43m0n(nextNodeNumber, "bitnode_start.js");
 	spawnNextScript(ns);
 }
