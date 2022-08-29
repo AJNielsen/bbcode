@@ -5,7 +5,7 @@ let loaded = false;
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 function getRawData(ns) {
     let raw = ns.read(datafile);
-    if(raw == null || raw == "") {
+    if (raw == null || raw == "") {
         return "";
     }
 
@@ -13,34 +13,40 @@ function getRawData(ns) {
 }
 
 function initializeStateData(ns) {
-    statedata = {
-        "LastUpdated" : new Date(),
-        "BitNode" : {
+    return {
+        "LastUpdated": new Date(),
+        "BitNode": {
             "State": "New"
         },
-        "Wipe" : {
+        "Wipe": {
             "State": "New"
         },
-        "Augments" : {
+        "Augments": {
             "Owned": [],
-            "Unowned" : []
+            "Unowned": []
         }
-    }
+    };
+}
+
+export function init() {
+    statedata = {};
+    loaded = false;
 }
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 export function getSavedData(ns) {
-    if(loaded) {
+    if (loaded) {
         return statedata;
     }
 
-    if(ns == null || ns == undefined) {
-        return null;
+    if (ns == null || ns == undefined) {
+        throw "WHAT THE HECK!"
+        //return null;
     }
 
     let raw = getRawData(ns);
-    if(raw == "") {
-        initializeStateData(ns);
+    if (raw == "") {
+        statedata = initializeStateData(ns);
     } else {
         statedata = JSON.parse(raw);
     }
@@ -52,13 +58,15 @@ export function getSavedData(ns) {
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 export async function saveStateData(ns) {
+    ns.tprint(JSON.stringify(statedata));
     await ns.write(datafile, JSON.stringify(statedata), "w");
 }
 
 export function updateOwnedAugments(ownedAugments) {
-    if(!Array.isArray(ownedAugments)) {
+    if (!Array.isArray(ownedAugments)) {
         return;
     }
 
+    statedata.LastUpdated = new Date();
     statedata.Augments.Owned = ownedAugments;
 }
