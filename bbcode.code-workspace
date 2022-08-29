@@ -3,5 +3,9 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"bitburner.authToken": "wsioKphEVV8Dn7b/EEHkH6o/dlVb5HrltzQPJH6JfVSvWwM+wJG+q2XuHfBspQQX",
+		"bitburner.scriptRoot": "./home/"
+	}
 }
