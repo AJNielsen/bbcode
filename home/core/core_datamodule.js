@@ -1,6 +1,5 @@
 let datafile = "core_data.txt";
-let statedata = {};
-let loaded = false;
+var statedata = {};
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 function getRawData(ns) {
@@ -28,31 +27,22 @@ function initializeStateData(ns) {
     };
 }
 
-export function init() {
-    statedata = {};
-    loaded = false;
-}
-
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
-export function getSavedData(ns) {
-    if (loaded) {
-        return statedata;
-    }
-
-    if (ns == null || ns == undefined) {
-        throw "WHAT THE HECK!"
-        //return null;
-    }
-
+function loadStateData(ns) {
     let raw = getRawData(ns);
     if (raw == "") {
         statedata = initializeStateData(ns);
     } else {
         statedata = JSON.parse(raw);
     }
+}
 
-    loaded = true;
+/** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
+export function initDataModule(ns) {
+    loadStateData(ns);
+}
 
+export function getSavedData() {
     return statedata;
 }
 

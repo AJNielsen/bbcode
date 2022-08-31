@@ -1,61 +1,69 @@
-import { getSavedData, init, saveStateData, updateOwnedAugments } from "/core/core_datamodule.js";
+import { initDataModule, getSavedData, saveStateData, updateOwnedAugments } from "/core/core_datamodule.js";
 import { delay } from "/core/core_utility.js";
+import {initReturnPacketHandler, shutdownPacketHandler, handleReturnPortData } from "/core/core_return_packet_handler.js";
 
 //Script Members
-let returnPortHandle;
-let logPortHandle;
+// let returnPortHandle;
+// let logPortHandle;
 let handlePortDataPromise;
+let runningPromise;
 
-
-/** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
-function setupPortHandles(ns) {
-    returnPortHandle = ns.getPortHandle(20);
-    logPortHandle = ns.getPortHandle(19);
-}
-
-async function handleReturnPortData() {
-    while (true) {
-        await delay(100);
-        while (!returnPortHandle.empty()) {
-            logPortHandle.write("Have data to read!");
-            let value = returnPortHandle.read();
-            logPortHandle.write("Data: " + value);
-
-            let packet = JSON.parse(value);
-
-            handlePacket(packet);
-        }
+async function addToPromise(newPromise) {
+    if(runningPromise == null) {
+        runningPromise = newPromise;
+    } else {
+        runningPromise = runningPromise.then(await newPromise);
     }
+
+    return runningPromise;
 }
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
-async function runGetOwnedAugmentsScript(ns) {
+async function runSetupAugmentDataScripts(ns) {
     let pid = ns.run("/core/augments/get_owned_augments.js");
     if (pid == 0) {
         ns.tprint("Failed to run script to get owned augments!");
     }
 
     while (ns.scriptRunning(pid, "home")) {
-        await ns.sleep(250);
+        await addToPromise(delay(1000));
     }
+
+    pid = 0;
+
+    pid = ns.run("/core/augments/get_augment_details.js");
+    if (pid == 0) {
+        ns.tprint("Failed to run script to get augment details!");
+    }
+
+    while (ns.scriptRunning(pid, "home")) {
+        await addToPromise(delay(1000));
+    }
+}
+
+function initModules(ns) {
+    initDataModule(ns);
+    initReturnPacketHandler(ns, function(promise){
+        return addToPromise(promise);
+    }, getSavedData, updateOwnedAugments);
 }
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 async function startUp(ns) {
     ns.tprint("Controller is starting up!");
-    init();
+    initModules(ns);
 
     //Get Save Data
     let savedData = getSavedData(ns);
     ns.tprint(savedData);
     saveStateData(ns);
 
-    setupPortHandles(ns);
+    //setupPortHandles(ns);
 
     handlePortDataPromise = handleReturnPortData();
-    await runGetOwnedAugmentsScript(ns);
+    await runSetupAugmentDataScripts(ns);
 
-    await delay(2000);
+    await addToPromise(delay(2000));
 
     saveStateData(ns);
     ns.tprint("Controller has completed startup!");
@@ -63,55 +71,12 @@ async function startUp(ns) {
 
 /** @param {import("U:/src/bitburner/bbcode/home/").NS} ns */
 export async function main(ns) {
+    ns.atExit(() => {
+        shutdownPacketHandler();
+    });
+    
     await startUp(ns);
+    await addToPromise(delay(2000));
 
     ns.tprint("We have reached the exit somehow! HALP!");
-}
-
-function handlePacket(packet) {
-    logPortHandle.write("Handling packet!");
-    if (packet.PacketType == null || packet.PacketType == undefined) {
-        //TODO: Do something to log here!
-        logPortHandle.write("Packet Type was not set!");
-        return;
-    }
-
-    if (packet.PacketType == "OwnedAugments") {
-        logPortHandle.write("Owned Augments Packet!");
-        handleOwnedAugmentsPacket(packet);
-        return;
-    }
-
-    logPortHandle.write("Unknown packet type!");
-}
-
-function handleOwnedAugmentsPacket(packet) {
-    logPortHandle.write("Handling owned augments!");
-
-    if (packet.PacketType != "OwnedAugments") {
-        logPortHandle.write("Packet type was not correct: " + packet.PacketType);
-        return;
-    }
-
-
-    let ownedAugments = JSON.parse(packet.Data);
-
-    let savedData = getSavedData(null);
-
-    if (savedData == null) {
-        logPortHandle.write("Saved data was null!");
-        return;
-    }
-
-    let knownOwned = savedData.Augments.Owned;
-
-    for (let i = 0; i < ownedAugments.length; i++) {
-        if (!knownOwned.includes(ownedAugments[i])) {
-            knownOwned.push(ownedAugments[i]);
-        }
-    }
-
-    logPortHandle.write("known Owned: " + JSON.stringify(knownOwned));
-
-    updateOwnedAugments(knownOwned);
 }
